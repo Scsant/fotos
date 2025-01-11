@@ -3,9 +3,6 @@ from PIL import Image
 import exifread
 import pandas as pd
 import os
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import cv2
-import numpy as np
 
 # Função para extrair coordenadas GPS de uma imagem
 def get_gps_coordinates(image_path):
@@ -36,15 +33,6 @@ def convert_to_degrees(value):
     d, m, s = [float(v.num) / float(v.den) for v in value.values]
     return d + (m / 60.0) + (s / 3600.0)
 
-# Classe para captura de frames da câmera
-class VideoTransformer(VideoTransformerBase):
-    def __init__(self):
-        self.frame = None
-
-    def transform(self, frame):
-        self.frame = frame.to_ndarray(format="bgr24")
-        return frame
-
 # Configuração inicial
 data_file = "local_data.csv"
 os.makedirs("images", exist_ok=True)
@@ -55,35 +43,34 @@ if not os.path.exists(data_file):
 # Streamlit UI
 st.title("Aplicativo de Captura de Fotos com Informações de Localização")
 
-# WebRTC para capturar imagens
-ctx = webrtc_streamer(key="example", video_transformer_factory=VideoTransformer, rtc_configuration={"iceServers": []})
+# Upload de imagem ou captura da câmera
+uploaded_file = st.file_uploader("Tire uma foto ou faça o upload de uma imagem", type=['jpg', 'jpeg', 'png'])
 
-if ctx.video_transformer:
-    if st.button("Capturar Foto"):
-        if ctx.video_transformer.frame is not None:
-            image = ctx.video_transformer.frame
-            image_path = os.path.join("images", "captured_image.jpg")
-            cv2.imwrite(image_path, image)
-            st.image(image, caption="Imagem capturada", use_column_width=True)
+if uploaded_file is not None:
+    image_path = os.path.join("images", uploaded_file.name)
+    with open(image_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
 
-            # Obter coordenadas GPS
-            lat, lon = get_gps_coordinates(image_path)
+    st.image(Image.open(image_path), caption="Imagem carregada", use_column_width=True)
 
-            if lat and lon:
-                st.success(f"Coordenadas GPS extraídas: Latitude {lat}, Longitude {lon}")
-            else:
-                st.warning("Não foi possível obter coordenadas GPS desta imagem.")
+    # Obter coordenadas GPS
+    lat, lon = get_gps_coordinates(image_path)
 
-            # Formulário para descrição
-            description = st.text_input("Adicione uma descrição para o local")
+    if lat and lon:
+        st.success(f"Coordenadas GPS extraídas: Latitude {lat}, Longitude {lon}")
+    else:
+        st.warning("Não foi possível obter coordenadas GPS desta imagem.")
 
-            # Botão para salvar
-            if st.button("Salvar informações"):
-                new_data = {"Imagem": "captured_image.jpg", "Latitude": lat, "Longitude": lon, "Descrição": description}
-                df = pd.read_csv(data_file)
-                df = df.append(new_data, ignore_index=True)
-                df.to_csv(data_file, index=False)
-                st.success("Informações salvas com sucesso!")
+    # Formulário para descrição
+    description = st.text_input("Adicione uma descrição para o local")
+
+    # Botão para salvar
+    if st.button("Salvar informações"):
+        new_data = {"Imagem": uploaded_file.name, "Latitude": lat, "Longitude": lon, "Descrição": description}
+        df = pd.read_csv(data_file)
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        df.to_csv(data_file, index=False)
+        st.success("Informações salvas com sucesso!")
 
 # Exibir tabela com informações salvas
 if st.checkbox("Exibir dados salvos"):
