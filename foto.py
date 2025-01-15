@@ -80,13 +80,16 @@ if st.checkbox("Exibir dados salvos"):
 
 # Função para permitir download das imagens
 def download_file(file_path):
-    with open(file_path, "rb") as f:
-        st.download_button(
-            label=f"Baixar {os.path.basename(file_path)}",
-            data=f,
-            file_name=os.path.basename(file_path),
-            mime="image/jpeg" if file_path.lower().endswith('.jpg') else "image/png",
-        )
+    if os.path.exists(file_path):  # Verifica se o arquivo ainda existe
+        with open(file_path, "rb") as f:
+            st.download_button(
+                label=f"Baixar {os.path.basename(file_path)}",
+                data=f,
+                file_name=os.path.basename(file_path),
+                mime="image/jpeg" if file_path.lower().endswith('.jpg') else "image/png",
+            )
+    else:
+        st.warning(f"O arquivo {os.path.basename(file_path)} não existe mais para download.")
 
 # Função para deletar um arquivo
 def delete_file(file_path):
