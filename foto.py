@@ -88,9 +88,24 @@ def download_file(file_path):
             mime="image/jpeg" if file_path.lower().endswith('.jpg') else "image/png",
         )
 
-# Permitir o download das imagens carregadas
+# Função para deletar um arquivo
+def delete_file(file_path):
+    try:
+        os.remove(file_path)
+        st.success(f"Arquivo {os.path.basename(file_path)} deletado com sucesso!")
+    except Exception as e:
+        st.error(f"Erro ao deletar o arquivo {os.path.basename(file_path)}: {e}")
+
+# Permitir o download e a exclusão das imagens carregadas
 if os.path.exists("images"):
     image_files = os.listdir("images")
     for image_file in image_files:
         image_path = os.path.join("images", image_file)
+
+        # Botão para deletar a imagem
+        delete_button = st.button(f"Deletar {image_file}")
+        if delete_button:
+            delete_file(image_path)
+
+        # Botão para download da imagem
         download_file(image_path)
