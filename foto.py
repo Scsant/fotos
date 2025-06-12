@@ -28,7 +28,6 @@ def get_gps_coordinates(image_path):
         st.error(f"Erro ao processar EXIF: {e}")
     return None, None
 
-# Conversão para graus decimais
 def convert_to_degrees(value):
     d, m, s = [float(v.num) / float(v.den) for v in value.values]
     return d + (m / 60.0) + (s / 3600.0)
@@ -43,9 +42,11 @@ if not os.path.exists(data_file):
 # Streamlit UI
 st.title("Aplicativo de Captura de Mídia com Informações de Localização")
 
-uploaded_files = st.file_uploader("Selecione imagens, vídeos, PDFs ou arquivos ZIP", 
-                                  type=['jpg', 'jpeg', 'png', 'mp4', 'avi', 'pdf', 'zip'], 
-                                  accept_multiple_files=True)
+uploaded_files = st.file_uploader(
+    "Selecione imagens, vídeos, PDFs, arquivos ZIP, Excel ou VSIX",
+    type=['jpg', 'jpeg', 'png', 'mp4', 'avi', 'pdf', 'zip', 'xlsx', 'xlsm', 'vsix'],
+    accept_multiple_files=True
+)
 
 if uploaded_files:
     for uploaded_file in uploaded_files:
@@ -53,25 +54,30 @@ if uploaded_files:
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
+        lat, lon = None, None  # Valores padrão
+
         if uploaded_file.type.startswith('image'):
             try:
                 st.image(Image.open(file_path), caption=f"Imagem carregada: {uploaded_file.name}", use_column_width=True)
                 lat, lon = get_gps_coordinates(file_path)
             except UnidentifiedImageError:
                 st.error(f"O arquivo {uploaded_file.name} não é uma imagem válida.")
-                lat, lon = None, None
-
         elif uploaded_file.type.startswith('video'):
             st.video(file_path)
-            lat, lon = None, None  # Processamento de metadados de vídeo pode ser adicionado posteriormente
-
         elif uploaded_file.type == 'application/pdf':
             st.success(f"PDF {uploaded_file.name} carregado com sucesso!")
-            lat, lon = None, None
-
+        elif uploaded_file.name.endswith(('.xlsx', '.xlsm')):
+            try:
+                excel_df = pd.read_excel(file_path)
+                st.write(f"Pré-visualização de {uploaded_file.name}:")
+                st.dataframe(excel_df.head())
+                st.success(f"Arquivo Excel {uploaded_file.name} carregado com sucesso!")
+            except Exception as e:
+                st.error(f"Erro ao carregar Excel: {e}")
+        elif uploaded_file.name.endswith('.vsix'):
+            st.success(f"Arquivo VSIX {uploaded_file.name} carregado com sucesso!")
         elif uploaded_file.type == 'application/zip':
             st.success(f"Arquivo ZIP {uploaded_file.name} carregado com sucesso!")
-            lat, lon = None, None
         else:
             st.warning(f"Tipo de arquivo não suportado: {uploaded_file.type}")
             continue
@@ -79,7 +85,13 @@ if uploaded_files:
         description = st.text_input(f"Adicione uma descrição para {uploaded_file.name}")
 
         if st.button(f"Salvar informações de {uploaded_file.name}"):
-            new_data = {"Arquivo": uploaded_file.name, "Latitude": lat, "Longitude": lon, "Descrição": description, "Tipo": uploaded_file.type}
+            new_data = {
+                "Arquivo": uploaded_file.name,
+                "Latitude": lat,
+                "Longitude": lon,
+                "Descrição": description,
+                "Tipo": uploaded_file.type
+            }
             df = pd.read_csv(data_file)
             df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             df.to_csv(data_file, index=False)
@@ -90,8 +102,6 @@ if st.checkbox("Exibir dados salvos"):
     df = pd.read_csv(data_file)
     st.dataframe(df)
 
-# Função para permitir download dos arquivos
-
 def download_file(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
@@ -99,7 +109,6 @@ def download_file(file_path):
     else:
         st.warning(f"O arquivo {os.path.basename(file_path)} não existe mais para download.")
 
-# Função para deletar um arquivo
 def delete_file(file_path):
     try:
         os.remove(file_path)
@@ -107,7 +116,7 @@ def delete_file(file_path):
     except Exception as e:
         st.error(f"Erro ao deletar o arquivo {os.path.basename(file_path)}: {e}")
 
-# Permitir o download e a exclusão das imagens carregadas
+# Permitir o download e a exclusão dos arquivos carregados
 if os.path.exists("files"):
     file_list = os.listdir("files")
     for file_name in file_list:
