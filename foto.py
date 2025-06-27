@@ -44,7 +44,7 @@ st.title("Aplicativo de Captura de Mídia com Informações de Localização")
 
 uploaded_files = st.file_uploader(
     "Selecione imagens, vídeos, PDFs, arquivos ZIP, Excel ou VSIX",
-    type=['jpg', 'jpeg', 'png', 'mp4', 'avi', 'pdf', 'zip', 'xlsx', 'xlsm', 'vsix'],
+    type=['jpg', 'jpeg', 'png', 'mp4', 'avi', 'pdf', 'zip', 'xlsx', 'xlsm', 'vsix', 'docx'],
     accept_multiple_files=True
 )
 
